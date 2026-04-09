@@ -1,48 +1,29 @@
-import { Client, GatewayIntentBits } from 'discord.js';
-import Gamedig from 'gamedig';
-import dotenv from 'dotenv';
+import { REST, Routes } from 'discord.js';
 
-dotenv.config();
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-const SERVER_IP = process.env.SERVER_IP;
-const SERVER_PORT = process.env.SERVER_PORT;
-
-client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}`);
-});
-
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === 'ping') {
-    interaction.reply('Pong!');
+const commands = [
+  {
+    name: 'ping',
+    description: 'Replies with Pong!'
+  },
+  {
+    name: 'status',
+    description: 'Shows The Isle Evrima server status'
   }
+];
 
-  if (interaction.commandName === 'status') {
-    try {
-      const state = await Gamedig.query({
-        type: 'theisle',
-        host: SERVER_IP,
-        port: SERVER_PORT
-      });
-
-      interaction.reply({
-        content: `🦖 **The Isle Evrima Server Status**
-🟢 Status: Online
-👥 Players: ${state.players.length}/${state.maxplayers}
-📡 Ping: ${state.ping}ms
-🌍 Map: ${state.map}`
-      });
-    } catch (error) {
-      console.error('Gamedig error:', error.message);
-      interaction.reply({
-        content: `🦖 **The Isle Evrima Server Status**
-🔴 Status: Offline or unreachable
-Error: ${error.message}`
-      });
-    }
+(async () => {
+  try {
+    console.log('Registering slash commands...');
+    await rest.put(
+      Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
+      { body: commands }
+    );
+    console.log('Slash commands registered!');
+  } catch (error) {
+    console.error('Failed to register commands:', error);
   }
-});
+})();
 
 client.login(process.env.DISCORD_TOKEN);
