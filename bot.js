@@ -22,7 +22,7 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.commandName === 'status') {
     try {
       const state = await Gamedig.query({
-        type: 'theisle',
+        type: 'protocol-valve',
         host: SERVER_IP,
         port: SERVER_PORT
       });
@@ -41,7 +41,7 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.commandName === 'map') {
     try {
       const state = await Gamedig.query({
-        type: 'theisle',
+        type: 'protocol-valve',
         host: SERVER_IP,
         port: SERVER_PORT
       });
