@@ -17,22 +17,20 @@ async function queryServer() {
   const rcon = new Rcon({
     host: SERVER_IP,
     port: parseInt(SERVER_PORT),
-    password: RCON_PASSWORD
+    password: RCON_PASSWORD,
+    timeout: 5000
   });
 
   try {
     await rcon.connect();
     
-    // Get player data
     const playersResponse = await rcon.send('getplayerd');
     const mapResponse = await rcon.send('MAP');
     
-    // Parse "Players: X/Y" format
     const playerMatch = playersResponse.match(/Players:\s*(\d+)\/(\d+)/);
     const currentPlayers = playerMatch ? playerMatch[1] : '0';
     const maxPlayers = playerMatch ? playerMatch[2] : '50';
     
-    // Parse map response
     const map = mapResponse.trim();
     
     await rcon.end();
