@@ -57,43 +57,46 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'ping') {
-    interaction.reply('Pong!');
+    await interaction.reply('Pong!');
   }
 
   if (interaction.commandName === 'status') {
+    await interaction.deferReply();
     const status = await queryServer();
     
     if (!status.online) {
-      interaction.reply({
+      await interaction.editReply({
         content: `🦖 **The Isle Evrima Server Status**\n🔴 Status: Offline\nError: ${status.error}`
       });
       return;
     }
 
-    interaction.reply({
+    await interaction.editReply({
       content: `🦖 **The Isle Evrima Server Status**\n🟢 Status: Online\n👥 Players: ${status.players}\n🌍 Map: ${status.map}`
     });
   }
 
   if (interaction.commandName === 'map') {
+    await interaction.deferReply();
     const status = await queryServer();
     
     if (!status.online) {
-      interaction.reply(`Error: ${status.error}`);
+      await interaction.editReply(`Error: ${status.error}`);
       return;
     }
 
-    interaction.reply({
+    await interaction.editReply({
       content: `🌍 **Current Map**: ${status.map}`
     });
   }
 
   if (interaction.commandName === 'status-channel') {
+    await interaction.deferReply();
     const status = await queryServer();
     
     const channel = client.channels.cache.get(process.env.STATUS_CHANNEL_ID);
     if (!channel) {
-      interaction.reply('Error: Status channel not found');
+      await interaction.editReply('Error: Status channel not found');
       return;
     }
 
@@ -101,7 +104,7 @@ client.on('interactionCreate', async (interaction) => {
       await channel.send({
         content: `🦖 **The Isle Evrima Server Status**\n🔴 Status: Offline\nError: ${status.error}`
       });
-      interaction.reply('✅ Status posted to channel (offline)');
+      await interaction.editReply('✅ Status posted to channel (offline)');
       return;
     }
 
@@ -109,7 +112,7 @@ client.on('interactionCreate', async (interaction) => {
       content: `🦖 **The Isle Evrima Server Status**\n🟢 Status: Online\n👥 Players: ${status.players}\n🌍 Map: ${status.map}`
     });
 
-    interaction.reply('✅ Status posted to channel');
+    await interaction.editReply('✅ Status posted to channel');
   }
 });
 
