@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
-import Gamedig from 'gamedig';
+import { Rcon } from 'rcon-client';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -7,10 +7,51 @@ dotenv.config();
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const SERVER_IP = process.env.SERVER_IP;
 const SERVER_PORT = process.env.SERVER_PORT;
+const RCON_PASSWORD = process.env.RCON_PASSWORD;
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
+
+async function queryServer() {
+  const rcon = new Rcon({
+    host: SERVER_IP,
+    port: parseInt(SERVER_PORT),
+    password: RCON_PASSWORD
+  });
+
+  try {
+    await rcon.connect();
+    
+    // Get player data
+    const playersResponse = await rcon.send('getplayerd');
+    const mapResponse = await rcon.send('MAP');
+    
+    // Parse "Players: X/Y" format
+    const playerMatch = playersResponse.match(/Players:\s*(\d+)\/(\d+)/);
+    const currentPlayers = playerMatch ? playerMatch[1] : '0';
+    const maxPlayers = playerMatch ? playerMatch[2] : '50';
+    
+    // Parse map response
+    const map = mapResponse.trim();
+    
+    await rcon.end();
+    
+    return {
+      online: true,
+      map: map,
+      players: `${currentPlayers}/${maxPlayers}`,
+      currentPlayers: parseInt(currentPlayers),
+      maxPlayers: parseInt(maxPlayers)
+    };
+  } catch (error) {
+    console.error('RCON error:', error.message);
+    return {
+      online: false,
+      error: error.message
+    };
+  }
+}
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -20,68 +61,55 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.commandName === 'status') {
-    try {
-      const state = await Gamedig.query({
-        type: 'protocol-valve',
-        host: SERVER_IP,
-        port: SERVER_PORT
-      });
-
+    const status = await queryServer();
+    
+    if (!status.online) {
       interaction.reply({
-        content: `🦖 **The Isle Evrima Server Status**\n🟢 Status: Online\n👥 Players: ${state.players.length}/${state.maxplayers}\n📡 Ping: ${state.ping}ms\n🌍 Map: ${state.map}`
+        content: `🦖 **The Isle Evrima Server Status**\n🔴 Status: Offline\nError: ${status.error}`
       });
-    } catch (error) {
-      console.error('Gamedig error:', error.message);
-      interaction.reply({
-        content: `🦖 **The Isle Evrima Server Status**\n🔴 Status: Offline or unreachable\nError: ${error.message}`
-      });
+      return;
     }
+
+    interaction.reply({
+      content: `🦖 **The Isle Evrima Server Status**\n🟢 Status: Online\n👥 Players: ${status.players}\n🌍 Map: ${status.map}`
+    });
   }
 
   if (interaction.commandName === 'map') {
-    try {
-      const state = await Gamedig.query({
-        type: 'protocol-valve',
-        host: SERVER_IP,
-        port: SERVER_PORT
-      });
-
-      interaction.reply({
-        content: `🌍 **Current Map**: ${state.map}`
-      });
-    } catch (error) {
-      console.error('Gamedig error:', error.message);
-      interaction.reply({
-        content: `Error fetching map: ${error.message}`
-      });
+    const status = await queryServer();
+    
+    if (!status.online) {
+      interaction.reply(`Error: ${status.error}`);
+      return;
     }
+
+    interaction.reply({
+      content: `🌍 **Current Map**: ${status.map}`
+    });
   }
 
   if (interaction.commandName === 'status-channel') {
-    try {
-      const state = await Gamedig.query({
-        type: 'protocol-valve',
-        host: SERVER_IP,
-        port: SERVER_PORT
-      });
-
-      const channel = client.channels.cache.get(process.env.STATUS_CHANNEL_ID);
-      if (!channel) {
-        interaction.reply('Error: Status channel not found');
-        return;
-      }
-
-      await channel.send({
-        content: `🦖 **The Isle Evrima Server Status**\n🟢 Status: Online\n👥 Players: ${state.players.length}/${state.maxplayers}\n📡 Ping: ${state.ping}ms\n🌍 Map: ${state.map}`
-      });
-
-      interaction.reply('✅ Status posted to channel');
-    } catch (error) {
-      console.error('Gamedig error:', error.message);
-      interaction.reply({
-        content: `Error: ${error.message}`
-      });
+    const status = await queryServer();
+    
+    const channel = client.channels.cache.get(process.env.STATUS_CHANNEL_ID);
+    if (!channel) {
+      interaction.reply('Error: Status channel not found');
+      return;
     }
+
+    if (!status.online) {
+      await channel.send({
+        content: `🦖 **The Isle Evrima Server Status**\n🔴 Status: Offline\nError: ${status.error}`
+      });
+      interaction.reply('✅ Status posted to channel (offline)');
+      return;
+    }
+
+    await channel.send({
+      content: `🦖 **The Isle Evrima Server Status**\n🟢 Status: Online\n👥 Players: ${status.players}\n🌍 Map: ${status.map}`
+    });
+
+    interaction.reply('✅ Status posted to channel');
   }
 });
 
