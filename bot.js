@@ -56,6 +56,33 @@ client.on('interactionCreate', async (interaction) => {
       });
     }
   }
+
+  if (interaction.commandName === 'status-channel') {
+    try {
+      const state = await Gamedig.query({
+        type: 'protocol-valve',
+        host: SERVER_IP,
+        port: SERVER_PORT
+      });
+
+      const channel = client.channels.cache.get(process.env.STATUS_CHANNEL_ID);
+      if (!channel) {
+        interaction.reply('Error: Status channel not found');
+        return;
+      }
+
+      await channel.send({
+        content: `🦖 **The Isle Evrima Server Status**\n🟢 Status: Online\n👥 Players: ${state.players.length}/${state.maxplayers}\n📡 Ping: ${state.ping}ms\n🌍 Map: ${state.map}`
+      });
+
+      interaction.reply('✅ Status posted to channel');
+    } catch (error) {
+      console.error('Gamedig error:', error.message);
+      interaction.reply({
+        content: `Error: ${error.message}`
+      });
+    }
+  }
 });
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -72,6 +99,10 @@ const commands = [
   {
     name: 'map',
     description: 'Shows the current map'
+  },
+  {
+    name: 'status-channel',
+    description: 'Posts server status to the status channel'
   }
 ];
 
